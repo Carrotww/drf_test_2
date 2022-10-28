@@ -2,6 +2,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework import status, permissions
 from rest_framework.response import Response
+from django.db.models.query_utils import Q
 from articles.models import Article, Comment
 from  articles.serializers import ArticleSerializer, ArticleListSerializer, ArticleCreateSerializer, CommentSerializer, CommentCreateSerializer
 
@@ -50,6 +51,18 @@ class ArticleDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response("권한이 없습니다!", status=status.HTTP_403_FORBIDDEN)
+        
+class FeedView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    # Q object 사용 검색해서 공부해보기
+    def get(self, request):
+        q = Q()
+        for user in request.user.followings.all():
+            q.add(Q(user=user), q.OR)
+        feeds = Article.objects.filter(q)
+        slz = ArticleListSerializer(feeds, many=True)
+
+        return Response(slz.data)
 
 class CommentView(APIView):
     def get(self, request, article_id):
@@ -97,4 +110,5 @@ class LikeView(APIView):
         else:
             article.likes.add(request.user)
             return Response("follow is done", status=status.HTTP_200_OK)
+
 
